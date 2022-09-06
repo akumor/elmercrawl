@@ -11,6 +11,7 @@ import (
 
 type Crawler struct {
 	Glue       glueiface.GlueAPI
+	CatalogId  string
 	databases  []*glue.Database
 	tables     []*glue.TableData
 	partitions []*glue.Partition
@@ -87,7 +88,11 @@ func (c *Crawler) getTables() error {
 		if err != nil {
 			return fmt.Errorf("getTables failed to get tables: %w", err)
 		}
-		c.tables = getTblOut.TableList
+		if c.tables == nil {
+			c.tables = getTblOut.TableList
+		} else {
+			c.tables = append(c.tables, getTblOut.TableList...)
+		}
 		for {
 			if getTblOut.NextToken == nil {
 				break
@@ -136,7 +141,11 @@ func (c *Crawler) getPartitions() error {
 		if err != nil {
 			return fmt.Errorf("getPartitions failed to get partitions: %w", err)
 		}
-		c.partitions = getPartOut.Partitions
+		if c.partitions == nil {
+			c.partitions = getPartOut.Partitions
+		} else {
+			c.partitions = append(c.partitions, getPartOut.Partitions...)
+		}
 		for {
 			if getPartOut.NextToken == nil {
 				break
@@ -155,11 +164,10 @@ func (c *Crawler) getPartitions() error {
 	return nil
 }
 
-// TODO: get rid of SetupTestGlueDataCatalog method in favor of unit tests
 func (c *Crawler) SetupTestGlueDataCatalog() error {
 	_, err := c.Glue.CreateDatabase(&glue.CreateDatabaseInput{
 		DatabaseInput: &glue.DatabaseInput{
-			Name: aws.String("jktestdb"),
+			Name: aws.String("testdb"),
 		},
 	})
 	if err != nil {
@@ -168,9 +176,9 @@ func (c *Crawler) SetupTestGlueDataCatalog() error {
 		}
 	}
 	_, err = c.Glue.CreateTable(&glue.CreateTableInput{
-		DatabaseName: aws.String("jktestdb"),
+		DatabaseName: aws.String("testdb"),
 		TableInput: &glue.TableInput{
-			Name: aws.String("jktesttable"),
+			Name: aws.String("testtable"),
 			StorageDescriptor: &glue.StorageDescriptor{
 				Columns: []*glue.Column{
 					{
@@ -200,8 +208,8 @@ func (c *Crawler) SetupTestGlueDataCatalog() error {
 		}
 	}
 	_, err = c.Glue.CreatePartition(&glue.CreatePartitionInput{
-		DatabaseName: aws.String("jktestdb"),
-		TableName:    aws.String("jktesttable"),
+		DatabaseName: aws.String("testdb"),
+		TableName:    aws.String("testtable"),
 		PartitionInput: &glue.PartitionInput{
 			Values: []*string{
 				aws.String("20220902"),

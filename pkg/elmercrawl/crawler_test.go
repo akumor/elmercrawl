@@ -226,10 +226,41 @@ type mockedGetPartitions struct {
 
 func (m mockedGetPartitions) GetPartitions(in *glue.GetPartitionsInput) (*glue.GetPartitionsOutput, error) {
 	// Only need to return mocked response output
+	response := &glue.GetPartitionsOutput{
+		Partitions: []*glue.Partition{},
+	}
+	catalogId := ""
+	if in.CatalogId != nil {
+		catalogId = *in.CatalogId
+	}
+	databaseName := *in.DatabaseName
+	tableName := *in.TableName
 	if in.NextToken == nil {
-		return &m.Resp, nil
+		response.NextToken = m.Resp.NextToken
+		response.Partitions = make([]*glue.Partition, len(m.Resp.Partitions))
+		for i := range m.Resp.Partitions {
+			respPart := *m.Resp.Partitions[i]
+			response.Partitions[i] = &respPart
+		}
+		for i := range response.Partitions {
+			response.Partitions[i].CatalogId = aws.String(catalogId)
+			response.Partitions[i].DatabaseName = aws.String(databaseName)
+			response.Partitions[i].TableName = aws.String(tableName)
+		}
+		return response, nil
 	} else {
-		return &m.RespTwo, nil
+		response.NextToken = m.RespTwo.NextToken
+		response.Partitions = make([]*glue.Partition, len(m.RespTwo.Partitions))
+		for i := range m.RespTwo.Partitions {
+			respPart := *m.RespTwo.Partitions[i]
+			response.Partitions[i] = &respPart
+		}
+		for i := range response.Partitions {
+			response.Partitions[i].CatalogId = aws.String(catalogId)
+			response.Partitions[i].DatabaseName = aws.String(databaseName)
+			response.Partitions[i].TableName = aws.String(tableName)
+		}
+		return response, nil
 	}
 }
 
@@ -250,7 +281,8 @@ func TestCrawlPartitions(t *testing.T) {
 			},
 			Tables: []*glue.TableData{
 				{
-					Name: aws.String("testtable"),
+					DatabaseName: aws.String("testdb"),
+					Name:         aws.String("testtable"),
 				},
 			},
 			Resp: glue.GetPartitionsOutput{
@@ -288,24 +320,22 @@ func TestCrawlPartitions(t *testing.T) {
 			},
 			Tables: []*glue.TableData{
 				{
-					Name: aws.String("testtable"),
+					DatabaseName: aws.String("testdb"),
+					Name:         aws.String("testtable"),
 				},
 				{
-					Name: aws.String("testtable2"),
+					DatabaseName: aws.String("testdb2"),
+					Name:         aws.String("testtable2"),
 				},
 			},
 			Resp: glue.GetPartitionsOutput{
 				Partitions: []*glue.Partition{
 					{
-						DatabaseName: aws.String("testdb"),
-						TableName:    aws.String("testtable"),
 						Values: []*string{
 							aws.String("20220903"),
 						},
 					},
 					{
-						DatabaseName: aws.String("testdb2"),
-						TableName:    aws.String("testtable2"),
 						Values: []*string{
 							aws.String("20220904"),
 						},
@@ -316,15 +346,11 @@ func TestCrawlPartitions(t *testing.T) {
 			RespTwo: glue.GetPartitionsOutput{
 				Partitions: []*glue.Partition{
 					{
-						DatabaseName: aws.String("testdb"),
-						TableName:    aws.String("testtable"),
 						Values: []*string{
 							aws.String("20220905"),
 						},
 					},
 					{
-						DatabaseName: aws.String("testdb2"),
-						TableName:    aws.String("testtable2"),
 						Values: []*string{
 							aws.String("20220906"),
 						},
@@ -341,8 +367,8 @@ func TestCrawlPartitions(t *testing.T) {
 					},
 				},
 				{
-					DatabaseName: aws.String("testdb2"),
-					TableName:    aws.String("testtable2"),
+					DatabaseName: aws.String("testdb"),
+					TableName:    aws.String("testtable"),
 					Values: []*string{
 						aws.String("20220904"),
 					},
@@ -350,6 +376,34 @@ func TestCrawlPartitions(t *testing.T) {
 				{
 					DatabaseName: aws.String("testdb"),
 					TableName:    aws.String("testtable"),
+					Values: []*string{
+						aws.String("20220905"),
+					},
+				},
+				{
+					DatabaseName: aws.String("testdb"),
+					TableName:    aws.String("testtable"),
+					Values: []*string{
+						aws.String("20220906"),
+					},
+				},
+				{
+					DatabaseName: aws.String("testdb2"),
+					TableName:    aws.String("testtable2"),
+					Values: []*string{
+						aws.String("20220903"),
+					},
+				},
+				{
+					DatabaseName: aws.String("testdb2"),
+					TableName:    aws.String("testtable2"),
+					Values: []*string{
+						aws.String("20220904"),
+					},
+				},
+				{
+					DatabaseName: aws.String("testdb2"),
+					TableName:    aws.String("testtable2"),
 					Values: []*string{
 						aws.String("20220905"),
 					},
